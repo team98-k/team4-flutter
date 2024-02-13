@@ -15,7 +15,9 @@ void main() async {
     await AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
   }
   if (status.isGranted) {
-    runApp(const MyApp());
+    runApp(const MaterialApp(
+      home: InAppWebViewScreen(),
+    ),);
   } else {
     if (status.isPermanentlyDenied) {
       openAppSettings();
@@ -23,75 +25,147 @@ void main() async {
   }
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+
+class InAppWebViewScreen extends StatefulWidget {
+  const InAppWebViewScreen({Key? key}):super(key:key);
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Fullscreen WebView App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: FullScreenWebView(),
-    );
-  }
+  State<InAppWebViewScreen> createState() => _InAppWebViewScreenState();
 }
 
-class FullScreenWebView extends StatelessWidget {
+class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
   final String url = "https://saengbang.xyz";
   final String url2= "http://192.168.192.204";
   String? _currentAddress;
   Position? _currentPosition;
+  late final InAppWebViewController webViewController;
+  Uri myUrl = Uri.parse("https://saengbang.xyz");
+  final GlobalKey webViewKey = GlobalKey();
+  double progress = 0;
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(
-                  url: Uri.parse(url2),
-                ),
-                onWebViewCreated: (controller) async{
-                  _currentPosition ??= await _getCurrentPosition();
-                  controller.addJavaScriptHandler(handlerName: 'getLocation', callback: (args) async{
-                    var position = {
-                      'lat': _currentPosition?.latitude, 'lon': _currentPosition?.longitude
-                    };
-                    print(position);
-                    return position;
-                  });
-                },
-                onLoadStop:(InAppWebViewController controller, Uri? uri) async {
-                  if(uri != null && uri.origin == url) {
-                    await _getCurrentPosition();
-                    print(_currentPosition?.latitude??"");
-                    print(_currentPosition?.longitude??"");
-                    print(uri.origin);
-                  }
-                },
-                initialOptions: InAppWebViewGroupOptions(
-                  android: AndroidInAppWebViewOptions(
-                    useHybridComposition: true,
-                    useWideViewPort: true,
-                    geolocationEnabled: true,
-                  ),
-                  ios: IOSInAppWebViewOptions(
-                    allowsInlineMediaPlayback: true,
-                  ),
-                ),
+        body: SafeArea(
+            child: WillPopScope(
+                onWillPop: () => _goBack(context),
+                child: Column(children: <Widget>[
+                  progress < 1.0
+                      ? LinearProgressIndicator(value: progress, color: Colors.blue)
+                      : Container(),
+                  Expanded(
+                      child: Stack(children: [
+                        InAppWebView(
+                          key: webViewKey,
+                          initialUrlRequest: URLRequest(url: myUrl),
+                          initialOptions: InAppWebViewGroupOptions(
+                            crossPlatform: InAppWebViewOptions(
+                                javaScriptCanOpenWindowsAutomatically: true,
+                                javaScriptEnabled: true,
+                                useOnDownloadStart: true,
+                                useOnLoadResource: true,
+                                useShouldOverrideUrlLoading: true,
+                                mediaPlaybackRequiresUserGesture: true,
+                                allowFileAccessFromFileURLs: true,
+                                allowUniversalAccessFromFileURLs: true,
+                                verticalScrollBarEnabled: true,
+                                userAgent: 'Mozilla/5.0 (Linux; Android 9; LG-H870 Build/PKQ1.190522.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36'
+                            ),
+                            android: AndroidInAppWebViewOptions(
+                                useHybridComposition: true,
+                                allowContentAccess: true,
+                                builtInZoomControls: true,
+                                thirdPartyCookiesEnabled: true,
+                                allowFileAccess: true,
+                                supportMultipleWindows: true
+                            ),
+                            ios: IOSInAppWebViewOptions(
+                              allowsInlineMediaPlayback: true,
+                              allowsBackForwardNavigationGestures: true,
+                            ),
+                          ),
+                          onLoadStart: (InAppWebViewController controller, uri) {
+                            setState(() {myUrl = uri!;});
+                          },
+                          onLoadStop: (InAppWebViewController controller, uri) {
+                            setState(() {myUrl = uri!;});
+                          },
+                          androidOnPermissionRequest: (controller, origin, resources) async {
+                            return PermissionRequestResponse(
+                                resources: resources,
+                                action: PermissionRequestResponseAction.GRANT);
+                          },
+                          onWebViewCreated: (InAppWebViewController controller) async{
+                            webViewController = controller;
 
-              ),
-            ),
-          ],
-        ),
-      ),
+                            _currentPosition ??= await _getCurrentPosition();
+                            controller.addJavaScriptHandler(handlerName: 'getLocation', callback: (args) async{
+                              var position = {
+                                'lat': _currentPosition?.latitude, 'lon': _currentPosition?.longitude
+                              };
+                              return position;
+                            });
+                          },
+                          onCreateWindow: (controller, createWindowRequest) async{
+                            showDialog(
+                              context: context, builder: (context) {
+                              return AlertDialog(
+                                content: SizedBox(
+                                  width: MediaQuery.of(context).size.width,
+                                  height: 400,
+                                  child: InAppWebView(
+                                    // Setting the windowId property is important here!
+                                    windowId: createWindowRequest.windowId,
+                                    initialOptions: InAppWebViewGroupOptions(
+                                      android: AndroidInAppWebViewOptions(
+                                        builtInZoomControls: true,
+                                        thirdPartyCookiesEnabled: true,
+                                      ),
+                                      crossPlatform: InAppWebViewOptions(
+                                        mediaPlaybackRequiresUserGesture: false,
+                                        cacheEnabled: true,
+                                        javaScriptEnabled: true,
+                                        userAgent: "Mozilla/5.0 (Linux; Android 9; LG-H870 Build/PKQ1.190522.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36",
+                                      ),
+                                      ios: IOSInAppWebViewOptions(
+                                        allowsInlineMediaPlayback: true,
+                                        allowsBackForwardNavigationGestures: true,
+                                      ),
+                                    ),
+                                    onCloseWindow: (controller) async{
+                                      if (Navigator.canPop(context)) {
+                                        Navigator.pop(context);
+                                        Navigator.of(context).popUntil(ModalRoute.withName('/root'));
+                                      }
+                                    },
+                                  ),
+                                ),);
+                            },
+                            );
+                            return true;
+                          },
+                        )
+                      ]))
+                ])
+            )
+        )
     );
   }
 
+
+  Future<bool> _goBack(BuildContext context) async{
+    if (myUrl.toString() == "") {
+      exit(0);
+    } else {
+      if (await webViewController.canGoBack()) {
+        webViewController.goBack();
+        return Future.value(false);
+      } else {
+        return Future.value(true);
+      }
+    }
+  }
 
   Future<bool> _handleLocationPermission() async {
     bool serviceEnabled;
