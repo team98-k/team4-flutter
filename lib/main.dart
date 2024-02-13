@@ -34,12 +34,10 @@ class InAppWebViewScreen extends StatefulWidget {
 }
 
 class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
-  final String url = "https://saengbang.xyz";
-  final String url2= "http://192.168.192.204";
   String? _currentAddress;
   Position? _currentPosition;
   late final InAppWebViewController webViewController;
-  Uri myUrl = Uri.parse("https://saengbang.xyz");
+  Uri myUrl = Uri.parse('https://saengbang.xyz');
   final GlobalKey webViewKey = GlobalKey();
   double progress = 0;
 
@@ -152,18 +150,45 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
         )
     );
   }
-
+  Future<void> _neverSatisfied(BuildContext context) async {
+    return showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('알림'),
+            content: const SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text('앱을 닫으시겠습니까?'),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  exit(0);
+                },
+              ),
+              TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancel'))
+            ],
+          );
+        });
+  }
 
   Future<bool> _goBack(BuildContext context) async{
-    if (myUrl.toString() == "") {
-      exit(0);
+    if (await webViewController.canGoBack()) {
+      webViewController.goBack();
+      return Future.value(false);
     } else {
-      if (await webViewController.canGoBack()) {
-        webViewController.goBack();
-        return Future.value(false);
-      } else {
-        return Future.value(true);
-      }
+      _neverSatisfied(context);
+      return Future.value(false);
     }
   }
 
