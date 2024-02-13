@@ -40,8 +40,58 @@ class MyApp extends StatelessWidget {
 
 class FullScreenWebView extends StatelessWidget {
   final String url = "https://saengbang.xyz";
+  final String url2= "http://192.168.192.204";
   String? _currentAddress;
   Position? _currentPosition;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: InAppWebView(
+                initialUrlRequest: URLRequest(
+                  url: Uri.parse(url2),
+                ),
+                onWebViewCreated: (controller) async{
+                  _currentPosition ??= await _getCurrentPosition();
+                  controller.addJavaScriptHandler(handlerName: 'getLocation', callback: (args) async{
+                    var position = {
+                      'lat': _currentPosition?.latitude, 'lon': _currentPosition?.longitude
+                    };
+                    print(position);
+                    return position;
+                  });
+                },
+                onLoadStop:(InAppWebViewController controller, Uri? uri) async {
+                  if(uri != null && uri.origin == url) {
+                    await _getCurrentPosition();
+                    print(_currentPosition?.latitude??"");
+                    print(_currentPosition?.longitude??"");
+                    print(uri.origin);
+                  }
+                },
+                initialOptions: InAppWebViewGroupOptions(
+                  android: AndroidInAppWebViewOptions(
+                    useHybridComposition: true,
+                    useWideViewPort: true,
+                    geolocationEnabled: true,
+                  ),
+                  ios: IOSInAppWebViewOptions(
+                    allowsInlineMediaPlayback: true,
+                  ),
+                ),
+
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Future<bool> _handleLocationPermission() async {
     bool serviceEnabled;
@@ -64,17 +114,11 @@ class FullScreenWebView extends StatelessWidget {
     return true;
   }
 
-  Future<void> _getCurrentPosition() async {
+  Future<Position?> _getCurrentPosition() async {
     final hasPermission = await _handleLocationPermission();
 
-    if (!hasPermission) return;
-    await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
-        .then((Position position) {
-       _currentPosition = position;
-      _getAddressFromLatLng(_currentPosition!);
-    }).catchError((e) {
-      debugPrint(e);
-    });
+    if (!hasPermission) return null;
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
   Future<void> _getAddressFromLatLng(Position position) async {
@@ -82,46 +126,9 @@ class FullScreenWebView extends StatelessWidget {
         _currentPosition!.latitude, _currentPosition!.longitude)
         .then((List<Placemark> placemarks) {
       Placemark place = placemarks[0];
-        _currentAddress ='${place.street}, ${place.subLocality}, ${place.subAdministrativeArea}, ${place.postalCode}';
+      _currentAddress ='${place.street}, ${place.subLocality}, ${place.subAdministrativeArea}, ${place.postalCode}';
     }).catchError((e) {
       debugPrint(e);
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(
-                  url: Uri.parse(url),
-                ),
-                onLoadStop:(InAppWebViewController controller, Uri? uri) async {
-                  if(uri != null && uri.origin == url) {
-                    await _getCurrentPosition();
-                    print(_currentPosition?.latitude??"");
-                    print(_currentPosition?.longitude??"");
-                    print(uri.origin);
-                  }
-                },
-                initialOptions: InAppWebViewGroupOptions(
-                  android: AndroidInAppWebViewOptions(
-                    useWideViewPort: true,
-                    geolocationEnabled: true,
-                  ),
-                  ios: IOSInAppWebViewOptions(
-                    allowsInlineMediaPlayback: true,
-                  ),
-                ),
-
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
