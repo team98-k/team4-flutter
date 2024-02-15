@@ -200,8 +200,6 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                                     onCloseWindow: (controller) async {
                                       if (Navigator.canPop(context)) {
                                         Navigator.pop(context);
-                                        Navigator.of(context).popUntil(
-                                            ModalRoute.withName('/root'));
                                       }
                                       return;
                                     },
