@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:geocoding/geocoding.dart';
@@ -37,11 +38,13 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
   String? _currentAddress;
   Position? _currentPosition;
   late final InAppWebViewController webViewController;
-  Uri myUrl = Uri.parse('https://matchmeifyoucan.today');
+  Uri myUrl = Uri.parse('https://fbsports.co.kr/');
   final GlobalKey webViewKey = GlobalKey();
   double progress = 0;
   late InAppWebViewGroupOptions options;
   late PullToRefreshController pullToRefreshController;
+
+  static const platform = MethodChannel('intent');
   @override
   void initState(){
     options = InAppWebViewGroupOptions(
@@ -71,6 +74,7 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,6 +90,25 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                         InAppWebView(
                           key: webViewKey,
                           initialUrlRequest: URLRequest(url: myUrl),
+                          shouldOverrideUrlLoading:
+                              (controller, NavigationAction navigationAction) async {
+                            var uri = navigationAction.request.url!;
+                            if (uri.scheme == 'intent') {
+                              try {
+                                var result = await platform
+                                    .invokeMethod('launchKakaoTalk', {'url': uri.toString()});
+                                if (result != null) {
+                                  await webViewController?.loadUrl(
+                                      urlRequest: URLRequest(url: Uri.parse(result)));
+                                }
+
+                              } catch (e) {
+                                print('url fail $e');
+                              }
+                              return NavigationActionPolicy.CANCEL;
+                            }
+                            return NavigationActionPolicy.ALLOW;
+                          },
                           initialOptions: InAppWebViewGroupOptions(
                             crossPlatform: InAppWebViewOptions(
                                 javaScriptCanOpenWindowsAutomatically: true,
