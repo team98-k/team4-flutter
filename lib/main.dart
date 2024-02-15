@@ -7,7 +7,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   var status = await Permission.location.request();
@@ -16,9 +15,12 @@ void main() async {
     await AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
   }
   if (status.isGranted) {
-    runApp(const MaterialApp(
-      home: InAppWebViewScreen(),
-    ),);
+    runApp(
+      const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: InAppWebViewScreen(),
+      ),
+    );
   } else {
     if (status.isPermanentlyDenied) {
       openAppSettings();
@@ -26,9 +28,8 @@ void main() async {
   }
 }
 
-
 class InAppWebViewScreen extends StatefulWidget {
-  const InAppWebViewScreen({Key? key}):super(key:key);
+  const InAppWebViewScreen({Key? key}) : super(key: key);
 
   @override
   State<InAppWebViewScreen> createState() => _InAppWebViewScreenState();
@@ -38,7 +39,7 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
   String? _currentAddress;
   Position? _currentPosition;
   late final InAppWebViewController webViewController;
-  Uri myUrl = Uri.parse('https://fbsports.co.kr/');
+  Uri myUrl = Uri.parse('https://saengbang.xyz/');
   final GlobalKey webViewKey = GlobalKey();
   double progress = 0;
   late InAppWebViewGroupOptions options;
@@ -46,7 +47,7 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
 
   static const platform = MethodChannel('intent');
   @override
-  void initState(){
+  void initState() {
     options = InAppWebViewGroupOptions(
         crossPlatform: InAppWebViewOptions(
           javaScriptEnabled: true,
@@ -66,10 +67,10 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
       ),
       onRefresh: () async {
         if (Platform.isAndroid) {
-          webViewController?.reload();
+          webViewController.reload();
         } else if (Platform.isIOS) {
-          webViewController?.loadUrl(
-              urlRequest: URLRequest(url: await webViewController?.getUrl()));
+          webViewController.loadUrl(
+              urlRequest: URLRequest(url: await webViewController.getUrl()));
         }
       },
     );
@@ -83,90 +84,99 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                 onWillPop: () => _goBack(context),
                 child: Column(children: <Widget>[
                   progress < 1.0
-                      ? LinearProgressIndicator(value: progress, color: Colors.blue)
+                      ? LinearProgressIndicator(
+                          value: progress, color: Colors.blue)
                       : Container(),
                   Expanded(
                       child: Stack(children: [
-                        InAppWebView(
-                          key: webViewKey,
-                          initialUrlRequest: URLRequest(url: myUrl),
-                          shouldOverrideUrlLoading:
-                              (controller, NavigationAction navigationAction) async {
-                            var uri = navigationAction.request.url!;
-                            if (uri.scheme == 'intent') {
-                              try {
-                                var result = await platform
-                                    .invokeMethod('launchKakaoTalk', {'url': uri.toString()});
-                                if (result != null) {
-                                  await webViewController?.loadUrl(
-                                      urlRequest: URLRequest(url: Uri.parse(result)));
-                                }
-
-                              } catch (e) {
-                                print('url fail $e');
-                              }
-                              return NavigationActionPolicy.CANCEL;
+                    InAppWebView(
+                      key: webViewKey,
+                      initialUrlRequest: URLRequest(url: myUrl),
+                      shouldOverrideUrlLoading: (controller,
+                          NavigationAction navigationAction) async {
+                        var uri = navigationAction.request.url!;
+                        if (uri.scheme == 'intent') {
+                          try {
+                            var result = await platform.invokeMethod(
+                                'launchKakaoTalk', {'url': uri.toString()});
+                            if (result != null) {
+                              await webViewController.loadUrl(
+                                  urlRequest:
+                                      URLRequest(url: Uri.parse(result)));
                             }
-                            return NavigationActionPolicy.ALLOW;
-                          },
-                          initialOptions: InAppWebViewGroupOptions(
-                            crossPlatform: InAppWebViewOptions(
-                                javaScriptCanOpenWindowsAutomatically: true,
-                                javaScriptEnabled: true,
-                                useOnDownloadStart: true,
-                                useOnLoadResource: true,
-                                useShouldOverrideUrlLoading: true,
-                                mediaPlaybackRequiresUserGesture: true,
-                                allowFileAccessFromFileURLs: true,
-                                allowUniversalAccessFromFileURLs: true,
+                          } catch (e) {
+                            print('url fail $e');
+                          }
+                          return NavigationActionPolicy.CANCEL;
+                        }
+                        return NavigationActionPolicy.ALLOW;
+                      },
+                      initialOptions: InAppWebViewGroupOptions(
+                        crossPlatform: InAppWebViewOptions(
+                            javaScriptCanOpenWindowsAutomatically: true,
+                            javaScriptEnabled: true,
+                            useOnDownloadStart: true,
+                            useOnLoadResource: true,
+                            useShouldOverrideUrlLoading: true,
+                            mediaPlaybackRequiresUserGesture: true,
+                            allowFileAccessFromFileURLs: true,
+                            allowUniversalAccessFromFileURLs: true,
+                            verticalScrollBarEnabled: true,
+                            userAgent:
+                                'Mozilla/5.0 (Linux; Android 9; LG-H870 Build/PKQ1.190522.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36'),
+                        android: AndroidInAppWebViewOptions(
+                          useHybridComposition: true,
+                          allowContentAccess: true,
+                          builtInZoomControls: true,
+                          thirdPartyCookiesEnabled: true,
+                          allowFileAccess: true,
+                          supportMultipleWindows: true,
+                        ),
+                        ios: IOSInAppWebViewOptions(
+                          allowsInlineMediaPlayback: true,
+                          allowsBackForwardNavigationGestures: true,
+                        ),
+                      ),
+                      onLoadStart: (InAppWebViewController controller, uri) {
+                        setState(() {
+                          myUrl = uri!;
+                        });
+                      },
+                      onLoadStop: (InAppWebViewController controller, uri) {
+                        setState(() {
+                          myUrl = uri!;
+                        });
+                      },
+                      androidOnPermissionRequest:
+                          (controller, origin, resources) async {
+                        return PermissionRequestResponse(
+                            resources: resources,
+                            action: PermissionRequestResponseAction.GRANT);
+                      },
+                      onWebViewCreated:
+                          (InAppWebViewController controller) async {
+                        webViewController = controller;
 
-                                verticalScrollBarEnabled: true,
-                                userAgent: 'Mozilla/5.0 (Linux; Android 9; LG-H870 Build/PKQ1.190522.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36'
-                            ),
-                            android: AndroidInAppWebViewOptions(
-                                useHybridComposition: true,
-                                allowContentAccess: true,
-                                builtInZoomControls: true,
-                                thirdPartyCookiesEnabled: true,
-                                allowFileAccess: true,
-                                supportMultipleWindows: true,
-
-                            ),
-                            ios: IOSInAppWebViewOptions(
-                              allowsInlineMediaPlayback: true,
-                              allowsBackForwardNavigationGestures: true,
-                            ),
-                          ),
-                          onLoadStart: (InAppWebViewController controller, uri) {
-                            setState(() {myUrl = uri!;});
-                          },
-                          onLoadStop: (InAppWebViewController controller, uri) {
-                            setState(() {myUrl = uri!;});
-                          },
-                          androidOnPermissionRequest: (controller, origin, resources) async {
-                            return PermissionRequestResponse(
-                                resources: resources,
-                                action: PermissionRequestResponseAction.GRANT);
-                          },
-                          onWebViewCreated: (InAppWebViewController controller) async{
-                            webViewController = controller;
-
-                            _currentPosition ??= await _getCurrentPosition();
-                            controller.addJavaScriptHandler(handlerName: 'getLocation', callback: (args) async{
+                        _currentPosition ??= await _getCurrentPosition();
+                        controller.addJavaScriptHandler(
+                            handlerName: 'getLocation',
+                            callback: (args) async {
                               var position = {
-                                'lat': _currentPosition?.latitude, 'lon': _currentPosition?.longitude
+                                'lat': _currentPosition?.latitude,
+                                'lon': _currentPosition?.longitude
                               };
                               return position;
                             });
-                          },
-                          onCreateWindow: (controller, createWindowRequest) async{
-                            showDialog(
-                              context: context, builder: (context) {
-                              return AlertDialog(
-                                content: SizedBox(
-                                  width: MediaQuery.of(context).size.width,
-                                  height: 400,
-                                  child: InAppWebView(
+                      },
+                      onCreateWindow: (controller, createWindowRequest) async {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              content: SizedBox(
+                                width: MediaQuery.of(context).size.width,
+                                height: 400,
+                                child: InAppWebView(
                                     // Setting the windowId property is important here!
                                     windowId: createWindowRequest.windowId,
                                     initialOptions: InAppWebViewGroupOptions(
@@ -178,47 +188,47 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                                         mediaPlaybackRequiresUserGesture: false,
                                         cacheEnabled: true,
                                         javaScriptEnabled: true,
-                                        userAgent: "Mozilla/5.0 (Linux; Android 9; LG-H870 Build/PKQ1.190522.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36",
+                                        userAgent:
+                                            "Mozilla/5.0 (Linux; Android 9; LG-H870 Build/PKQ1.190522.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36",
                                       ),
                                       ios: IOSInAppWebViewOptions(
                                         allowsInlineMediaPlayback: true,
-                                        allowsBackForwardNavigationGestures: true,
+                                        allowsBackForwardNavigationGestures:
+                                            true,
                                       ),
                                     ),
-                                    onCloseWindow: (controller) async{
+                                    onCloseWindow: (controller) async {
                                       if (Navigator.canPop(context)) {
                                         Navigator.pop(context);
-                                        Navigator.of(context).popUntil(ModalRoute.withName('/root'));
+                                        Navigator.of(context).popUntil(
+                                            ModalRoute.withName('/root'));
                                       }
+                                      return;
                                     },
-                                    onCreateWindow:(controller,action) {
+                                    onCreateWindow: (controller, action) {
                                       return showDialog(
-                                        barrierDismissible: true,
-                                        context:context,
-                                        builder:(context){
-                                          return InAppWebView(
-                                            initialOptions:options,
-                                            pullToRefreshController: pullToRefreshController,
-                                            onWebViewCreated:(controller) async{
-
-                                            }
-                                          );
-                                        }
-                                      );
-                                    }
-                                  ),
-                                ),);
-                            },
+                                          barrierDismissible: true,
+                                          context: context,
+                                          builder: (context) {
+                                            return InAppWebView(
+                                                initialOptions: options,
+                                                pullToRefreshController:
+                                                    pullToRefreshController,
+                                                onWebViewCreated:
+                                                    (controller) async {});
+                                          });
+                                    }),
+                              ),
                             );
-                            return true;
                           },
-                        )
-                      ]))
-                ])
-            )
-        )
-    );
+                        );
+                        return true;
+                      },
+                    )
+                  ]))
+                ]))));
   }
+
   Future<void> _neverSatisfied(BuildContext context) async {
     return showDialog<void>(
         context: context,
@@ -251,7 +261,7 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
         });
   }
 
-  Future<bool> _goBack(BuildContext context) async{
+  Future<bool> _goBack(BuildContext context) async {
     if (await webViewController.canGoBack()) {
       webViewController.goBack();
       return Future.value(false);
@@ -286,18 +296,19 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
     final hasPermission = await _handleLocationPermission();
 
     if (!hasPermission) return null;
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
   }
 
   Future<void> _getAddressFromLatLng(Position position) async {
     await placemarkFromCoordinates(
-        _currentPosition!.latitude, _currentPosition!.longitude)
+            _currentPosition!.latitude, _currentPosition!.longitude)
         .then((List<Placemark> placemarks) {
       Placemark place = placemarks[0];
-      _currentAddress ='${place.street}, ${place.subLocality}, ${place.subAdministrativeArea}, ${place.postalCode}';
+      _currentAddress =
+          '${place.street}, ${place.subLocality}, ${place.subAdministrativeArea}, ${place.postalCode}';
     }).catchError((e) {
       debugPrint(e);
     });
   }
 }
-
