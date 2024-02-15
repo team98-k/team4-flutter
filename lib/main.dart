@@ -37,11 +37,40 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
   String? _currentAddress;
   Position? _currentPosition;
   late final InAppWebViewController webViewController;
-  Uri myUrl = Uri.parse('https://saengbang.xyz');
+  Uri myUrl = Uri.parse('https://matchmeifyoucan.today');
   final GlobalKey webViewKey = GlobalKey();
   double progress = 0;
-
-
+  late InAppWebViewGroupOptions options;
+  late PullToRefreshController pullToRefreshController;
+  @override
+  void initState(){
+    options = InAppWebViewGroupOptions(
+        crossPlatform: InAppWebViewOptions(
+          javaScriptEnabled: true,
+          javaScriptCanOpenWindowsAutomatically: true,
+          useShouldOverrideUrlLoading: true,
+          mediaPlaybackRequiresUserGesture: false,
+        ),
+        android: AndroidInAppWebViewOptions(
+          useHybridComposition: true,
+        ),
+        ios: IOSInAppWebViewOptions(
+          allowsInlineMediaPlayback: true,
+        ));
+    pullToRefreshController = PullToRefreshController(
+      options: PullToRefreshOptions(
+        color: Colors.blue,
+      ),
+      onRefresh: () async {
+        if (Platform.isAndroid) {
+          webViewController?.reload();
+        } else if (Platform.isIOS) {
+          webViewController?.loadUrl(
+              urlRequest: URLRequest(url: await webViewController?.getUrl()));
+        }
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,6 +96,7 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                                 mediaPlaybackRequiresUserGesture: true,
                                 allowFileAccessFromFileURLs: true,
                                 allowUniversalAccessFromFileURLs: true,
+
                                 verticalScrollBarEnabled: true,
                                 userAgent: 'Mozilla/5.0 (Linux; Android 9; LG-H870 Build/PKQ1.190522.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36'
                             ),
@@ -76,7 +106,8 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                                 builtInZoomControls: true,
                                 thirdPartyCookiesEnabled: true,
                                 allowFileAccess: true,
-                                supportMultipleWindows: true
+                                supportMultipleWindows: true,
+
                             ),
                             ios: IOSInAppWebViewOptions(
                               allowsInlineMediaPlayback: true,
@@ -137,6 +168,21 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                                         Navigator.of(context).popUntil(ModalRoute.withName('/root'));
                                       }
                                     },
+                                    onCreateWindow:(controller,action) {
+                                      return showDialog(
+                                        barrierDismissible: true,
+                                        context:context,
+                                        builder:(context){
+                                          return InAppWebView(
+                                            initialOptions:options,
+                                            pullToRefreshController: pullToRefreshController,
+                                            onWebViewCreated:(controller) async{
+
+                                            }
+                                          );
+                                        }
+                                      );
+                                    }
                                   ),
                                 ),);
                             },
@@ -231,3 +277,4 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
     });
   }
 }
+
