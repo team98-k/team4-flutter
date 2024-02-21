@@ -83,10 +83,6 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
             child: WillPopScope(
                 onWillPop: () => _goBack(context),
                 child: Column(children: <Widget>[
-                  progress < 1.0
-                      ? LinearProgressIndicator(
-                          value: progress, color: Colors.blue)
-                      : Container(),
                   Expanded(
                       child: Stack(children: [
                     InAppWebView(
